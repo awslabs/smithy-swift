@@ -56,6 +56,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/awslabs/aws-crt-swift.git", exact: "0.36.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
+        .package(url: "https://github.com/open-telemetry/opentelemetry-swift", from: "1.0.0"),
     ],
     targets: [
         .target(
@@ -86,6 +87,10 @@ let package = Package(
                 "SmithyChecksumsAPI",
                 "SmithyChecksums",
                 .product(name: "AwsCommonRuntimeKit", package: "aws-crt-swift"),
+                .product(name: "InMemoryExporter", package: "opentelemetry-swift"),
+                .product(name: "OpenTelemetryApi", package: "opentelemetry-swift"),
+                .product(name: "OpenTelemetrySdk", package: "opentelemetry-swift"),
+                .product(name: "OpenTelemetryProtocolExporterHTTP", package: "opentelemetry-swift"),
             ],
             resources: [
                 .copy("PrivacyInfo.xcprivacy")

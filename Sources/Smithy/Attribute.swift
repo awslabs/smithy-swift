@@ -13,6 +13,10 @@ public struct AttributeKey<ValueType>: Sendable {
         self.name = name
     }
 
+    public func getName() -> String {
+        return self.name
+    }
+
     func toString() -> String {
         return "AttributeKey: \(name)"
     }
@@ -39,5 +43,9 @@ public struct Attributes {
 
     public mutating func remove<T>(key: AttributeKey<T>) {
         attributes.removeValue(forKey: key.name)
+    }
+
+    public func getKeys() -> [String] {
+        return Array(self.attributes.keys)
     }
 }
