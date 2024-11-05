@@ -8,12 +8,10 @@ import software.amazon.smithy.codegen.core.SymbolDependency
 import software.amazon.smithy.swift.codegen.integration.ProtocolGenerator
 import kotlin.jvm.optionals.getOrNull
 
-val PACKAGE_MANIFEST_NAME = "Package.swift.txt"
-
 class PackageManifestGenerator(val ctx: ProtocolGenerator.GenerationContext) {
 
     fun writePackageManifest(dependencies: List<SymbolDependency>) {
-        ctx.delegator.useFileWriter(PACKAGE_MANIFEST_NAME) { writer ->
+        ctx.delegator.useFileWriter("Package.swift.txt") { writer ->
             writer.write("// swift-tools-version: \$L", ctx.settings.swiftVersion)
             writer.write("")
             writer.write("import PackageDescription")
@@ -30,10 +28,12 @@ class PackageManifestGenerator(val ctx: ProtocolGenerator.GenerationContext) {
                     writer.write(".library(name: \$S, targets: [\$S])", ctx.settings.moduleName, ctx.settings.moduleName)
                 }
 
-                val externalDependencies = dependencies.filter {
-                    it.getProperty("url", String::class.java).getOrNull() != null ||
-                        it.getProperty("scope", String::class.java).getOrNull() != null
-                }
+                val externalDependencies = dependencies
+                    .filter { it.expectProperty("target", String::class.java) != "SmithyTestUtil" } // SmithyTestUtil links to test target only
+                    .filter {
+                        it.getProperty("url", String::class.java).getOrNull() != null ||
+                            it.getProperty("scope", String::class.java).getOrNull() != null
+                    }
                 val dependenciesByURL = externalDependencies
                     .distinctBy {
                         it.getProperty("url", String::class.java).getOrNull()

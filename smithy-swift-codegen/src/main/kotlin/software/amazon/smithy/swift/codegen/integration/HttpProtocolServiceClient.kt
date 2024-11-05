@@ -30,6 +30,7 @@ open class HttpProtocolServiceClient(
             ClientRuntimeTypes.Core.Client,
         ) {
             writer.write("public static let clientName = \$S", serviceSymbol.name)
+            writer.write("public static let version = \$S", ctx.settings.moduleVersion)
             writer.write("let client: \$N", ClientRuntimeTypes.Http.SdkHttpClient)
             writer.write("let config: \$L", serviceConfig.typeName)
             writer.write("let serviceName = \$S", serviceName)

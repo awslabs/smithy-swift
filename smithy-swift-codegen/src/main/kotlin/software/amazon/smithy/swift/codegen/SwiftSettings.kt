@@ -40,7 +40,7 @@ class SwiftSettings(
     val gitRepo: String,
     val swiftVersion: String,
     val mergeModels: Boolean,
-    val copyrightNotice: String
+    val copyrightNotice: String,
 ) {
 
     companion object {
@@ -68,7 +68,7 @@ class SwiftSettings(
                     GIT_REPO,
                     SWIFT_VERSION,
                     MERGE_MODELS,
-                    COPYRIGHT_NOTICE
+                    COPYRIGHT_NOTICE,
                 )
             )
 
@@ -77,7 +77,7 @@ class SwiftSettings(
                 .orElseGet { inferService(model) }
 
             val moduleName = config.expectStringMember(MODULE_NAME).value
-            val version = config.expectStringMember(MODULE_VERSION).value
+            val moduleVersion = config.expectStringMember(MODULE_VERSION).value
             val desc = config.getStringMemberOrDefault(MODULE_DESCRIPTION, "$moduleName client")
             val homepage = config.expectStringMember(HOMEPAGE).value
             val author = config.expectStringMember(AUTHOR).value
@@ -93,7 +93,7 @@ class SwiftSettings(
             return SwiftSettings(
                 serviceId,
                 moduleName,
-                version,
+                moduleVersion,
                 desc,
                 author,
                 homepage,
@@ -101,7 +101,7 @@ class SwiftSettings(
                 gitRepo,
                 swiftVersion,
                 mergeModels,
-                copyrightNotice
+                copyrightNotice,
             )
         }
 

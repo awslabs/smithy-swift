@@ -19,6 +19,7 @@ class HttpProtocolClientGeneratorTests {
         val expected = """
 public class RestJsonProtocolClient: ClientRuntime.Client {
     public static let clientName = "RestJsonProtocolClient"
+    public static let version = "2019-12-16"
     let client: ClientRuntime.SdkHttpClient
     let config: RestJsonProtocolClient.RestJsonProtocolClientConfiguration
     let serviceName = "Rest Json Protocol"
