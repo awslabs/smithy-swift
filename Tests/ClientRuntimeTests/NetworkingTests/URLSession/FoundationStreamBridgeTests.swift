@@ -71,7 +71,7 @@ class FoundationStreamBridgeTests: XCTestCase {
                 boundStreamBufferSize: boundStreamBufferSize,
                 logger: TestLogger(),
                 telemetry: HttpTelemetry(httpScope: "FoundationStreamBridgeTests"))
-            await subject.open()
+            subject.open()
 
             // This will hold the data that is bridged from the ReadableStream to the Foundation InputStream
             var bridgedData = Data()
@@ -90,7 +90,7 @@ class FoundationStreamBridgeTests: XCTestCase {
                 }
             }
             // Once the subject is exhausted, all data should have been bridged and the subject may be closed
-            await subject.close()
+            subject.close()
 
             // Close the inputStream as well
             subject.inputStream.close()

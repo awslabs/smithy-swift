@@ -314,7 +314,7 @@ public final class URLSessionHTTPClient: HTTPClient {
         ) {
             storage.modify(task) { connection in
                 guard let streamBridge = connection.streamBridge else { completionHandler(nil); return }
-                Task { await streamBridge.replaceStreams(completion: completionHandler) }
+                streamBridge.replaceStreams(completion: completionHandler)
             }
         }
 
@@ -377,12 +377,10 @@ public final class URLSessionHTTPClient: HTTPClient {
                 }
 
                 // Close the stream bridge so that its resources are deallocated
-                Task {
-                    await connection.streamBridge?.close()
+                connection.streamBridge?.close()
 
-                    // Task is complete & no longer needed.  Remove it from storage.
-                    storage.remove(task)
-                }
+                // Task is complete & no longer needed.  Remove it from storage.
+                storage.remove(task)
             }
         }
     }
@@ -485,7 +483,19 @@ public final class URLSessionHTTPClient: HTTPClient {
                 // Convert the HTTP request body into a URLSession `Body`.
                 switch request.body {
                 case .data(let data):
-                    body = .data(data)
+//                    body = .data(data)
+                    // Create a stream bridge that streams data from a SDK stream to a Foundation InputStream
+                    // that URLSession can stream its request body from.
+                    // Allow 16kb of in-memory buffer for request body streaming
+                    let bridge = FoundationStreamBridge(
+                        readableStream: BufferedStream(data: data, isClosed: true),
+                        bridgeBufferSize: 16_384,
+                        logger: logger,
+                        telemetry: telemetry,
+                        serverAddress: URLSessionHTTPClient.makeServerAddress(request: request)
+                    )
+                    streamBridge = bridge
+                    body = .stream(bridge)
                 case .stream(let stream):
                     // Create a stream bridge that streams data from a SDK stream to a Foundation InputStream
                     // that URLSession can stream its request body from.
@@ -563,9 +573,7 @@ public final class URLSessionHTTPClient: HTTPClient {
                         logger.debug("URLRequest(\(httpMethod) \(url)) started")
                         logBodyDescription(body)
                         dataTask.resume()
-                        Task { [streamBridge] in
-                            await streamBridge?.open()
-                        }
+                        streamBridge?.open()
                     } catch {
                         continuation.resume(throwing: error)
                     }
