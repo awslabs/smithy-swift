@@ -74,7 +74,7 @@ val licenseSpec = copySpec {
 val sourcesJar by tasks.creating(Jar::class) {
     group = "publishing"
     description = "Assembles Kotlin sources jar"
-    classifier = "sources"
+    archiveClassifier = "sources"
     from(sourceSets.getByName("main").allSource)
 }
 
@@ -89,15 +89,16 @@ tasks.jar {
 
 // Configure jacoco (code coverage) to generate an HTML report
 tasks.jacocoTestReport {
+    dependsOn(tasks.test)
     reports {
-        xml.isEnabled = false
-        csv.isEnabled = false
-        html.destination = file("$buildDir/reports/jacoco")
+        xml.required.set(false)
+        csv.required.set(false)
+        html.outputLocation.set(file("$buildDir/reports/jacoco"))
     }
 }
 
 // Always run the jacoco test report after testing.
-tasks["test"].finalizedBy(tasks["jacocoTestReport"])
+tasks["test"].finalizedBy(tasks.jacocoTestReport)
 
 publishing {
     publications {
