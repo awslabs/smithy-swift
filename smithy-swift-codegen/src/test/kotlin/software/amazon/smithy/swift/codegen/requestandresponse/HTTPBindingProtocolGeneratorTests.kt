@@ -73,8 +73,9 @@ extension ExplicitStructOutput {
         let data = try await httpResponse.data()
         let responseReader = try SmithyJSON.Reader.from(data: data)
         let reader = responseReader
+        reader.respectsJSONName = true
         var value = ExplicitStructOutput()
-        value.payload1 = try reader.readIfPresent(with: Nested2.read(from:))
+        value.payload1 = try reader.readStructure(schema: schema__namespace_smithy_swift_synthetic__name_ExplicitStructOutput__member_payload1)
         return value
     }
 }

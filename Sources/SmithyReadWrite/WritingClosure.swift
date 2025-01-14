@@ -8,7 +8,7 @@
 import struct Foundation.Data
 import struct Foundation.Date
 @_spi(SmithyTimestamps) import enum SmithyTimestamps.TimestampFormat
-import protocol Smithy.SmithyDocument
+import struct Smithy.Document
 
 @_spi(SmithyReadWrite)
 public typealias WritingClosure<T, Writer> = (T, Writer) throws -> Void
@@ -103,7 +103,7 @@ public enum WritingClosures {
         try writer.write(value)
     }
 
-    public static func writeDocument<Writer: SmithyWriter>(value: SmithyDocument?, to writer: Writer) throws {
+    public static func writeDocument<Writer: SmithyWriter>(value: Document?, to writer: Writer) throws {
         try writer.write(value)
     }
 }

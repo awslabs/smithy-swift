@@ -35,8 +35,8 @@ public struct BigDecimalDocument: SmithyDocument {
         return int
     }
 
-    public func asLong() throws -> Int64 {
-        guard let long = Int64(exactly: value) else {
+    public func asLong() throws -> Int {
+        guard let long = Int(exactly: value) else {
             throw DocumentError.numberOverflow("BigDecimal \(value) overflows long")
         }
         return long

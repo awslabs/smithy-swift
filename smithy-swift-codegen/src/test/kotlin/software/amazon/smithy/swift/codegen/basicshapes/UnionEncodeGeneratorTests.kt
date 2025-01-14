@@ -102,35 +102,6 @@ extension ExampleClientTypes.MyUnion {
                 try writer["sdkUnknown"].write(sdkUnknown)
         }
     }
-
-    static func read(from reader: SmithyJSON.Reader) throws -> ExampleClientTypes.MyUnion {
-        guard reader.hasContent else { throw SmithyReadWrite.ReaderError.requiredValueNotPresent }
-        let name = reader.children.filter { ${'$'}0.hasContent && ${'$'}0.nodeInfo.name != "__type" }.first?.nodeInfo.name
-        switch name {
-            case "stringValue":
-                return .stringvalue(try reader["stringValue"].read())
-            case "booleanValue":
-                return .booleanvalue(try reader["booleanValue"].read())
-            case "numberValue":
-                return .numbervalue(try reader["numberValue"].read())
-            case "blobValue":
-                return .blobvalue(try reader["blobValue"].read())
-            case "timestampValue":
-                return .timestampvalue(try reader["timestampValue"].readTimestamp(format: SmithyTimestamps.TimestampFormat.epochSeconds))
-            case "inheritedTimestamp":
-                return .inheritedtimestamp(try reader["inheritedTimestamp"].readTimestamp(format: SmithyTimestamps.TimestampFormat.httpDate))
-            case "enumValue":
-                return .enumvalue(try reader["enumValue"].read())
-            case "listValue":
-                return .listvalue(try reader["listValue"].readList(memberReadingClosure: SmithyReadWrite.ReadingClosures.readString(from:), memberNodeInfo: "member", isFlattened: false))
-            case "mapValue":
-                return .mapvalue(try reader["mapValue"].readMap(valueReadingClosure: SmithyReadWrite.ReadingClosures.readString(from:), keyNodeInfo: "key", valueNodeInfo: "value", isFlattened: false))
-            case "structureValue":
-                return .structurevalue(try reader["structureValue"].read(with: ExampleClientTypes.GreetingWithErrorsOutput.read(from:)))
-            default:
-                return .sdkUnknown(name ?? "")
-        }
-    }
 }
 """
         contents.shouldContainOnlyOnce(expectedContents)
@@ -152,19 +123,6 @@ extension ExampleClientTypes.IndirectEnum {
                 try writer["some"].write(some, with: ExampleClientTypes.IndirectEnum.write(value:to:))
             case let .sdkUnknown(sdkUnknown):
                 try writer["sdkUnknown"].write(sdkUnknown)
-        }
-    }
-
-    static func read(from reader: SmithyJSON.Reader) throws -> ExampleClientTypes.IndirectEnum {
-        guard reader.hasContent else { throw SmithyReadWrite.ReaderError.requiredValueNotPresent }
-        let name = reader.children.filter { ${'$'}0.hasContent && ${'$'}0.nodeInfo.name != "__type" }.first?.nodeInfo.name
-        switch name {
-            case "some":
-                return .some(try reader["some"].read(with: ExampleClientTypes.IndirectEnum.read(from:)))
-            case "other":
-                return .other(try reader["other"].read())
-            default:
-                return .sdkUnknown(name ?? "")
         }
     }
 }

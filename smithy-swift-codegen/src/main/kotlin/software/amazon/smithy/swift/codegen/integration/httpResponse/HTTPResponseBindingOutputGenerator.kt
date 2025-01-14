@@ -66,6 +66,9 @@ class HTTPResponseBindingOutputGenerator(
                             writer.write("let data = try await httpResponse.data()")
                             writer.write("let responseReader = try \$N.from(data: data)", ctx.service.readerSymbol)
                             writer.write("let reader = \$L", reader(ctx, op, writer))
+                            if (ctx.service.awsProtocol == AWSProtocol.REST_JSON_1) {
+                                writer.write("reader.respectsJSONName = true")
+                            }
                         }
                         writer.write("var value = \$N()", outputSymbol)
                         HTTPResponseHeaders(ctx, false, headerBindings, defaultTimestampFormat, writer).render()

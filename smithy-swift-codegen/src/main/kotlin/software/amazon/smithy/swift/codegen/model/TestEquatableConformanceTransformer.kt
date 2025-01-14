@@ -32,7 +32,7 @@ object TestEquatableConformanceTransformer {
         // Transform the model by adding the TestEquatableConformanceTrait to shapes that need it
         // In a later SwiftIntegration, the conformance will be code-generated
         return ModelTransformer.create().mapShapes(model) { shape ->
-            if (needsTestEquatableConformance.contains(shape.id)) {
+            if (needsTestEquatableConformance.contains(shape.id) && shape.id.namespace != "smithy.api") {
                 // If the shape is a structure or union, add the TestEquatableConformanceTrait to it
                 // All other shape types don't need to have Equatable generated for them
                 when (shape.type) {
