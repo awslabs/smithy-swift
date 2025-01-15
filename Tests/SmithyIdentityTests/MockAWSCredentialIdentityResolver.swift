@@ -11,14 +11,17 @@ import struct SmithyIdentity.AWSCredentialIdentity
 
 struct MockAWSCredentialIdentityResolver: AWSCredentialIdentityResolver {
     let _getIdentity: () async throws -> AWSCredentialIdentity
+
     init(_ _getIdentity: @escaping () async throws -> AWSCredentialIdentity) {
         self._getIdentity = _getIdentity
     }
+
     init() {
         self._getIdentity = {
             AWSCredentialIdentity(
-                accessKey: "some_access_key",
-                secret: "some_secret"
+                accessKey: "mock_access_key",
+                secret: "mock_secret",
+                accountID: "mock_account_id"
             )
         }
     }

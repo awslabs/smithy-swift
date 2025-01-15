@@ -13,7 +13,6 @@ import software.amazon.smithy.swift.codegen.SwiftWriter
 import software.amazon.smithy.swift.codegen.middleware.MiddlewareExecutionGenerator
 import software.amazon.smithy.swift.codegen.middleware.OperationMiddleware
 import software.amazon.smithy.swift.codegen.model.toUpperCamelCase
-import software.amazon.smithy.swift.codegen.swiftmodules.SmithyTypes
 import software.amazon.smithy.swift.codegen.utils.toUpperCamelCase
 
 /**
@@ -52,14 +51,7 @@ open class HttpProtocolClientGenerator(
                 writer.openBlock(" {", "}") {
                     val operationStackName = "operation"
                     val generator = MiddlewareExecutionGenerator(ctx, writer, httpBindingResolver, httpProtocolCustomizable, operationMiddleware, operationStackName)
-                    generator.render(serviceShape, it) { writer, labelMemberName ->
-                        writer.write(
-                            "throw \$N.unknownError(\"uri component \$L unexpectedly nil\")",
-                            SmithyTypes.ClientError,
-                            labelMemberName,
-                        )
-                    }
-
+                    generator.render(serviceShape, it)
                     writer.write("return try await op.execute(input: input)")
                 }
                 writer.write("")

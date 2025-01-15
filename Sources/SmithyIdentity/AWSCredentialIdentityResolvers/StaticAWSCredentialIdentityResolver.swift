@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-import class AwsCommonRuntimeKit.CredentialsProvider
+@_spi(AccountIDTempSupport) import class AwsCommonRuntimeKit.CredentialsProvider
 
 /// A credential identity resolver that provides a fixed set of credentials
 public struct StaticAWSCredentialIdentityResolver: AWSCredentialIdentityResolvedByCRT {
@@ -23,6 +23,6 @@ public struct StaticAWSCredentialIdentityResolver: AWSCredentialIdentityResolved
             accessKey: credentials.accessKey,
             secret: credentials.secret,
             sessionToken: credentials.sessionToken
-        ))
+        ), accountId: credentials.accountID)
     }
 }

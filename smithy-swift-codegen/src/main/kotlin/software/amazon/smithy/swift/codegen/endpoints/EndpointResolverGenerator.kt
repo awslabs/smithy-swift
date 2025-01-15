@@ -30,9 +30,6 @@ class EndpointResolverGenerator(
             it.write("")
             renderResolver(it, ruleSet)
             renderStaticResolver(it)
-            val inputSymbol = Symbol.builder().name("HTTPRequestBuilder").build()
-            val outputSymbol = Symbol.builder().name("OperationStackOutput").build()
-            val outputErrorSymbol = Symbol.builder().name("OperationStackError").build()
             it.write("")
         }
     }

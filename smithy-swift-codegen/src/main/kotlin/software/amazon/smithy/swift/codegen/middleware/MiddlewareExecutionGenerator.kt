@@ -1,23 +1,23 @@
 package software.amazon.smithy.swift.codegen.middleware
 
 import software.amazon.smithy.aws.traits.auth.UnsignedPayloadTrait
-import software.amazon.smithy.model.Model
 import software.amazon.smithy.model.shapes.OperationShape
 import software.amazon.smithy.model.shapes.ServiceShape
 import software.amazon.smithy.swift.codegen.SwiftWriter
+import software.amazon.smithy.swift.codegen.config.ConfigProperty
 import software.amazon.smithy.swift.codegen.integration.HTTPProtocolCustomizable
 import software.amazon.smithy.swift.codegen.integration.HttpBindingResolver
 import software.amazon.smithy.swift.codegen.integration.ProtocolGenerator
 import software.amazon.smithy.swift.codegen.integration.middlewares.handlers.MiddlewareShapeUtils
+import software.amazon.smithy.swift.codegen.model.hasTrait
 import software.amazon.smithy.swift.codegen.model.toLowerCamelCase
-import software.amazon.smithy.swift.codegen.model.toUpperCamelCase
 import software.amazon.smithy.swift.codegen.swiftFunctionParameterIndent
 import software.amazon.smithy.swift.codegen.swiftmodules.ClientRuntimeTypes
 import software.amazon.smithy.swift.codegen.swiftmodules.SmithyHTTPAPITypes
 import software.amazon.smithy.swift.codegen.swiftmodules.SmithyTypes
 
 typealias HttpMethodCallback = (OperationShape) -> String
-class MiddlewareExecutionGenerator(
+open class MiddlewareExecutionGenerator(
     private val ctx: ProtocolGenerator.GenerationContext,
     private val writer: SwiftWriter,
     private val httpBindingResolver: HttpBindingResolver,
@@ -26,16 +26,13 @@ class MiddlewareExecutionGenerator(
     private val operationStackName: String,
     private val httpMethodCallback: HttpMethodCallback? = null
 ) {
-    private val model: Model = ctx.model
     private val symbolProvider = ctx.symbolProvider
 
     fun render(
         serviceShape: ServiceShape,
         op: OperationShape,
         flowType: ContextAttributeCodegenFlowType = ContextAttributeCodegenFlowType.NORMAL,
-        onError: (SwiftWriter, String) -> Unit,
     ) {
-        val operationErrorName = "${op.toUpperCamelCase()}OutputError"
         val inputShape = MiddlewareShapeUtils.inputSymbol(symbolProvider, ctx.model, op)
         val outputShape = MiddlewareShapeUtils.outputSymbol(symbolProvider, ctx.model, op)
         writer.write("let context = \$N()", SmithyTypes.ContextBuilder)
@@ -91,15 +88,15 @@ class MiddlewareExecutionGenerator(
 
         // FIXME it over indents if i add another indent, come up with better way to properly indent or format for swift
 
-        writer.write("  .withMethod(value: .$httpMethod)")
+        writer.write("  .withMethod(value: .\$L)", httpMethod)
         writer.write("  .withServiceName(value: serviceName)")
-        writer.write("  .withOperation(value: \"${op.toLowerCamelCase()}\")")
+        writer.write("  .withOperation(value: \$S)", op.toLowerCamelCase())
         writer.write("  .withIdempotencyTokenGenerator(value: config.idempotencyTokenGenerator)")
         writer.write("  .withLogger(value: config.logger)")
         writer.write("  .withPartitionID(value: config.partitionID)")
         writer.write("  .withAuthSchemes(value: config.authSchemes ?? [])")
         writer.write("  .withAuthSchemeResolver(value: config.authSchemeResolver)")
-        writer.write("  .withUnsignedPayloadTrait(value: ${op.hasTrait(UnsignedPayloadTrait::class.java)})")
+        writer.write("  .withUnsignedPayloadTrait(value: \$L)", op.hasTrait<UnsignedPayloadTrait>())
         writer.write("  .withSocketTimeout(value: config.httpClientConfiguration.socketTimeout)")
         writer.write("  .withIdentityResolver(value: config.bearerTokenIdentityResolver, schemeID: \$S)", "smithy.api#httpBearerAuth")
 
@@ -114,6 +111,7 @@ class MiddlewareExecutionGenerator(
             writer.write("  .withExpiration(value: expiration)")
         }
 
+        // Add context values for config fields
         val serviceShape = ctx.service
         httpProtocolCustomizable.renderContextAttributes(ctx, writer, serviceShape, op)
         writer.write("  .build()")

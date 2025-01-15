@@ -9,14 +9,17 @@ import XCTest
 import struct SmithyIdentity.StaticAWSCredentialIdentityResolver
 
 class StaticAWSCredentialIdentityResolverTests: XCTestCase {
+
     func testGetCredentials() async throws {
         let subject = try StaticAWSCredentialIdentityResolver(.init(
-            accessKey: "some_access_key",
-            secret: "some_secret"
+            accessKey: "static_access_key",
+            secret: "static_secret",
+            accountID: "static_account_id"
         ))
         let credentials = try await subject.getIdentity()
         
-        XCTAssertEqual(credentials.accessKey, "some_access_key")
-        XCTAssertEqual(credentials.secret, "some_secret")
+        XCTAssertEqual(credentials.accessKey, "static_access_key")
+        XCTAssertEqual(credentials.secret, "static_secret")
+        XCTAssertEqual(credentials.accountID, "static_account_id")
     }
 }
