@@ -12,12 +12,15 @@ import protocol SmithyRetriesAPI.RetryErrorInfoProvider
 import struct Foundation.TimeInterval
 import class Foundation.NSError
 import var Foundation.NSURLErrorDomain
+import struct Smithy.SwiftLogger
 
 public enum DefaultRetryErrorInfoProvider: RetryErrorInfoProvider, Sendable {
     /// Returns information used to determine how & if to retry an error.
     /// - Parameter error: The error to be triaged for retry info
     /// - Returns: `RetryErrorInfo` for the passed error, or `nil` if the error should not be retried.
     public static func errorInfo(for error: Error) -> RetryErrorInfo? {
+        let logger = SwiftLogger(label: "DefaultRetryLogger")
+        logger.info("STUMBLED INTO DEFAULT RETRY")
         let retryableStatusCodes: [HTTPStatusCode] = [
             .internalServerError,  // 500
             .badGateway,           // 502

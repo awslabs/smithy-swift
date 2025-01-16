@@ -26,7 +26,7 @@ public final class SDKDefaultIO: @unchecked Sendable {
     private init() {
         CommonRuntimeKit.initialize()
         do {
-            try Logger.initialize(target: .standardOutput, level: .none)
+            try Logger.initialize(target: .standardOutput, level: .trace)
         } catch CommonRunTimeError.crtError(let error)
                     where error.code == 6 && error.name == "AWS_ERROR_UNSUPPORTED_OPERATION" {
             // logger was already initialized, no need to initialize it

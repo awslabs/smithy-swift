@@ -14,6 +14,8 @@ import struct Smithy.Attributes
 import SmithyHTTPAPI
 import protocol SmithyRetriesAPI.RetryStrategy
 import struct SmithyRetriesAPI.RetryErrorInfo
+import struct Smithy.SwiftLogger
+import enum AwsCommonRuntimeKit.CommonRunTimeError
 
 /// Orchestrates operation execution
 ///
@@ -256,29 +258,55 @@ public struct Orchestrator<
     ) async {
         let copiedRequest = context.getRequest().toBuilder().build()
 
+        let logger = SwiftLogger(label: "startAttemptLogger")
+        logger.info("STARTING ATTEMPT")
         await attempt(context: context, attemptCount: attemptCount)
+        logger.info("ENDING ATTEMPT")
 
         do {
+            logger.info("ABOUT TO CALL getOutput() from START ATTEMPT")
             _ = try context.getOutput()
             await strategy.recordSuccess(token: token)
         } catch let error {
+            logger.info("ERROR CAUGHT HERE BEFORE RETRY ERROR INFO \(error)")
+            logger.info("RETRY PROVIDER: \(retryErrorInfoProvider)")
             // If we can't get errorInfo, we definitely can't retry
             guard let errorInfo = retryErrorInfoProvider(error) else { return }
 
-            // If the body is a nonseekable stream, we also can't retry
-            do {
-                guard try readyBodyForRetry(request: copiedRequest) else { return }
-            } catch {
-                return
+            logger.info("ERROR INFO: \(errorInfo)")
+
+            // Check if error is CRTError with code 2087
+            let skipReadyBodyCheck: Bool
+            if case CommonRunTimeError.crtError(let crtError) = error, crtError.code == 2087 {
+                skipReadyBodyCheck = true
+            } else {
+                skipReadyBodyCheck = false
+            }
+            logger.info("SKIP BODY CHECK: \(skipReadyBodyCheck)")
+
+            if !skipReadyBodyCheck {
+                // If the body is a nonseekable stream, we also can't retry
+                do {
+                    guard try readyBodyForRetry(request: copiedRequest) else { return }
+                } catch {
+                    logger.info("Body is a nonseekable stream, can't retry")
+                    return
+                }
+            } else {
+                logger.info("SKIPPING READY BODY FOR RETRY")
             }
 
             // When refreshing fails it throws, indicating we're done retrying
             do {
                 try await strategy.refreshRetryTokenForRetry(tokenToRenew: token, errorInfo: errorInfo)
             } catch {
+                logger.info("[retries] refresh failed")
                 return
             }
 
+            logger.info("RETRYING, starting attempt for real")
+            // clear previous error result
+            context.setResult(result: nil)
             context.updateRequest(updated: copiedRequest)
             await startAttempt(context: context, strategy: strategy, token: token, attemptCount: attemptCount + 1)
         }
@@ -289,8 +317,11 @@ public struct Orchestrator<
     /// - Returns: `true` if the body of the request is safe to retry, `false` otherwise.  In general, a request body is retriable if it is not a stream, or
     ///   if the stream is seekable and successfully seeks to the start position / offset zero.
     private func readyBodyForRetry(request: RequestType) throws -> Bool {
+        let logger = SwiftLogger(label: "readyBodyForRetryLogger")
+        logger.info("ReadyBodyForRetry CALLED \(request.body)")
         switch request.body {
         case .stream(let stream):
+            logger.info("SEEKABLE? \(stream.isSeekable)")
             guard stream.isSeekable else { return false }
             do {
                 try stream.seek(toOffset: 0)
@@ -388,10 +419,13 @@ public struct Orchestrator<
                 try await interceptors.modifyBeforeTransmit(context: context)
                 try await interceptors.readBeforeTransmit(context: context)
 
+                let logger = SwiftLogger(label: "attemptLogger")
+                logger.info("ABOUT TO EXECUTE")
                 let response = try await executeRequest.execute(
                     request: context.getRequest(),
                     attributes: context.getAttributes()
                 )
+                logger.info("EXECUTION COMPLETE")
                 context.updateResponse(updated: response)
 
                 try await interceptors.readAfterTransmit(context: context)
@@ -410,6 +444,8 @@ public struct Orchestrator<
 
                 try await interceptors.readAfterDeserialization(context: context)
             } catch let error {
+                let logger = SwiftLogger(label: "caught attemptLogger")
+                logger.info("ERROR WAS CAUGHT IN ATTEMPT \(error)")
                 context.setResult(result: .failure(error))
             }
 
@@ -439,9 +475,12 @@ public struct Orchestrator<
         } catch let error {
             context.setResult(result: .failure(error))
         }
+        let logger = SwiftLogger(label: "StartCompletionLogger")
+
 
         // The last error that occurred, if any, is thrown
         do {
+            logger.info("ABOUT TO CALL getOutput() from START COMPLETION")
             return try context.getOutput()
         } catch {
             // TICK - smithy.client.call.errors
@@ -449,6 +488,7 @@ public struct Orchestrator<
                 value: 1,
                 attributes: telemetry.metricsAttributes,
                 context: telemetry.contextManager.current())
+            logger.info("ERROR WAS CAUGHT IN START COMPLETION \(error)")
             throw error
         }
     }
