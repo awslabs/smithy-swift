@@ -117,16 +117,19 @@ class StructureGenerator(
         writer.writeShapeDocs(shape)
         writer.writeAvailableAttribute(model, shape)
         val equatableConformance = writer.format(", \$N", SwiftTypes.Protocols.Equatable).takeIf { shape.hasTrait<EquatableConformanceTrait>() } ?: ""
-        writer.openBlock("public struct \$struct.name:L: \$N$equatableConformance {", SwiftTypes.Protocols.Sendable)
-            .call { generateStructMembers() }
-            .write("")
-            .call { generateInitializerForStructure(false) }
-            .closeBlock("}")
+        writer.openBlock(
+            "public struct \$struct.name:L: \$N$equatableConformance {", "}",
+            SwiftTypes.Protocols.Sendable,
+        ) {
+            generateStructMembers()
+            writer.write("")
+            generateInitializerForStructure(false)
+        }
     }
 
     private fun generateStructMembers() {
         membersSortedByName.forEach {
-            var (memberName, memberSymbol) = memberShapeDataContainer.getOrElse(it) { return@forEach }
+            val (memberName, memberSymbol) = memberShapeDataContainer.getOrElse(it) { return@forEach }
             writer.writeMemberDocs(model, it)
             val indirect = it.hasTrait<SwiftBoxTrait>()
             var indirectOrNot = ""
@@ -149,7 +152,7 @@ class StructureGenerator(
                     val (memberName, memberSymbol) = memberShapeDataContainer.getOrElse(member) { Pair(null, null) }
                     if (memberName == null || memberSymbol == null) continue
                     val terminator = if (index == membersSortedByName.size - 1) "" else ","
-                    writer.write("\$L: \$D$terminator", memberName, memberSymbol)
+                    writer.write("\$L: \$D\$L", memberName, memberSymbol, terminator)
                 }
             }
             writer.write(") {")

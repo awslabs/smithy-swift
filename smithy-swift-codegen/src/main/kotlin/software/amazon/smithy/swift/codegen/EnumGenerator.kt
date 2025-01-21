@@ -142,14 +142,18 @@ class EnumGenerator(
     private fun renderEnum() {
         writer.writeShapeDocs(shape)
         writer.writeAvailableAttribute(null, shape)
-        writer.openBlock(
-            "public enum \$enum.name:L: \$N, \$N, \$N, \$N, \$N {",
-            "}",
+        val conformances = writer.format(
+            "\$N, \$N, \$N, \$N, \$N",
             SwiftTypes.Protocols.Sendable,
             SwiftTypes.Protocols.Equatable,
             SwiftTypes.Protocols.RawRepresentable,
             SwiftTypes.Protocols.CaseIterable,
-            SwiftTypes.Protocols.Hashable
+            SwiftTypes.Protocols.Hashable,
+        )
+        writer.openBlock(
+            "public enum \$enum.name:L: \$L {",
+            "}",
+            conformances,
         ) {
             createEnumWriterContexts()
             // add the sdkUnknown case which will always be last

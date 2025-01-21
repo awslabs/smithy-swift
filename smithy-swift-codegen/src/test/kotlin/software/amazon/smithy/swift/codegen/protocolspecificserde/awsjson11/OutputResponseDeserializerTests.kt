@@ -50,8 +50,8 @@ extension SimpleStructureOutput {
         let responseReader = try SmithyJSON.Reader.from(data: data)
         let reader = responseReader
         var value = SimpleStructureOutput()
-        value.name = try reader["name"].readIfPresent()
-        value.number = try reader["number"].readIfPresent()
+        value.name = try reader.readString(schema: schema__namespace_smithy_swift_synthetic__name_SimpleStructureOutput__member_name)
+        value.number = try reader.readInteger(schema: schema__namespace_smithy_swift_synthetic__name_SimpleStructureOutput__member_number)
         return value
     }
 }

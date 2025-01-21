@@ -23,7 +23,6 @@ import software.amazon.smithy.model.shapes.StructureShape
 import software.amazon.smithy.model.shapes.TimestampShape
 import software.amazon.smithy.model.shapes.UnionShape
 import software.amazon.smithy.model.traits.EnumTrait
-import software.amazon.smithy.model.traits.ErrorTrait
 import software.amazon.smithy.model.traits.HttpHeaderTrait
 import software.amazon.smithy.model.traits.HttpLabelTrait
 import software.amazon.smithy.model.traits.HttpPayloadTrait
@@ -37,6 +36,7 @@ import software.amazon.smithy.model.traits.TimestampFormatTrait
 import software.amazon.smithy.swift.codegen.SwiftWriter
 import software.amazon.smithy.swift.codegen.customtraits.NeedsReaderTrait
 import software.amazon.smithy.swift.codegen.customtraits.NeedsWriterTrait
+import software.amazon.smithy.swift.codegen.customtraits.NestedTrait
 import software.amazon.smithy.swift.codegen.events.MessageMarshallableGenerator
 import software.amazon.smithy.swift.codegen.events.MessageUnmarshallableGenerator
 import software.amazon.smithy.swift.codegen.integration.httpResponse.HTTPResponseGenerator
@@ -57,6 +57,9 @@ import software.amazon.smithy.swift.codegen.integration.middlewares.SignerMiddle
 import software.amazon.smithy.swift.codegen.integration.middlewares.providers.HttpHeaderProvider
 import software.amazon.smithy.swift.codegen.integration.middlewares.providers.HttpQueryItemProvider
 import software.amazon.smithy.swift.codegen.integration.middlewares.providers.HttpUrlPathProvider
+import software.amazon.smithy.swift.codegen.integration.serde.readwrite.WireProtocol
+import software.amazon.smithy.swift.codegen.integration.serde.readwrite.responseWireProtocol
+import software.amazon.smithy.swift.codegen.integration.serde.schema.SchemaGenerator
 import software.amazon.smithy.swift.codegen.integration.serde.struct.StructDecodeGenerator
 import software.amazon.smithy.swift.codegen.integration.serde.struct.StructEncodeGenerator
 import software.amazon.smithy.swift.codegen.integration.serde.union.UnionDecodeGenerator
@@ -72,9 +75,11 @@ import software.amazon.smithy.swift.codegen.model.targetOrSelf
 import software.amazon.smithy.swift.codegen.supportsStreamingAndIsRPC
 import software.amazon.smithy.swift.codegen.swiftmodules.ClientRuntimeTypes
 import software.amazon.smithy.swift.codegen.utils.ModelFileUtils
+import software.amazon.smithy.swift.codegen.utils.SchemaFileUtils
 import software.amazon.smithy.utils.OptionalUtils
 import java.util.Optional
 import java.util.logging.Logger
+import kotlin.jvm.optionals.getOrNull
 
 private val Shape.isStreaming: Boolean
     get() = hasTrait<StreamingTrait>() && isUnionShape
@@ -207,11 +212,42 @@ abstract class HTTPBindingProtocolGenerator(
         }
     }
 
+    override fun generateSchemas(ctx: ProtocolGenerator.GenerationContext) {
+        if (ctx.service.responseWireProtocol != WireProtocol.JSON) { return }
+        val nestedShapes = resolveShapesNeedingSchema(ctx)
+            .filter { !it.hasTrait<StreamingTrait>() }
+            .filter {
+                !(
+                    it.asMemberShape().getOrNull()?.let {
+                        ctx.model.expectShape(it.target).hasTrait<StreamingTrait>()
+                    } ?: false
+                    )
+            }
+        for (shape in nestedShapes) {
+            renderSchemas(ctx, shape)
+        }
+    }
+
+    private fun renderSchemas(ctx: ProtocolGenerator.GenerationContext, shape: Shape) {
+        val symbol: Symbol = ctx.symbolProvider.toSymbol(shape)
+        val symbolName = symbol.name
+        val filename = SchemaFileUtils.filename(ctx.settings, "${shape.id.name}+Schema")
+        val encodeSymbol = Symbol.builder()
+            .definitionFile(filename)
+            .name(symbolName)
+            .build()
+        ctx.delegator.useShapeWriter(encodeSymbol) { writer ->
+            SchemaGenerator(ctx, writer).renderSchema(shape)
+        }
+    }
+
     fun renderCodableExtension(
         ctx: ProtocolGenerator.GenerationContext,
         shape: Shape,
     ) {
         if (!shape.hasTrait<NeedsReaderTrait>() && !shape.hasTrait<NeedsWriterTrait>()) { return }
+        val shapeUsesSchemaBasedRead = ctx.service.responseWireProtocol == WireProtocol.JSON && shape.hasTrait<NestedTrait>()
+        if (shapeUsesSchemaBasedRead && !shape.hasTrait<NeedsWriterTrait>()) { return }
         val symbol: Symbol = ctx.symbolProvider.toSymbol(shape)
         val symbolName = symbol.name
         val filename = ModelFileUtils.filename(ctx.settings, "$symbolName+ReadWrite")
@@ -226,12 +262,11 @@ abstract class HTTPBindingProtocolGenerator(
                     is StructureShape -> {
                         // get all members sorted by name and filter out either all members with other traits OR members with the payload trait
                         val httpBodyMembers = members.filter { it.isInHttpBody() }
-                        val path = "properties.".takeIf { shape.hasTrait<ErrorTrait>() } ?: ""
                         if (shape.hasTrait<NeedsWriterTrait>()) {
                             writer.write("")
                             renderStructEncode(ctx, shape, mapOf(), httpBodyMembers, writer)
                         }
-                        if (shape.hasTrait<NeedsReaderTrait>()) {
+                        if (shape.hasTrait<NeedsReaderTrait>() && !shapeUsesSchemaBasedRead) {
                             writer.write("")
                             renderStructDecode(ctx, shape, mapOf(), httpBodyMembers, writer)
                         }
@@ -241,7 +276,7 @@ abstract class HTTPBindingProtocolGenerator(
                             writer.write("")
                             UnionEncodeGenerator(ctx, shape, members, writer).render()
                         }
-                        if (shape.hasTrait<NeedsReaderTrait>()) {
+                        if (shape.hasTrait<NeedsReaderTrait>() && !shapeUsesSchemaBasedRead) {
                             writer.write("")
                             UnionDecodeGenerator(ctx, shape, members, writer).render()
                         }
@@ -345,6 +380,66 @@ abstract class HTTPBindingProtocolGenerator(
                     is UnionShape -> resolved.add(it)
                     is StructureShape -> resolved.add(it)
                 }
+            }
+        }
+        return resolved
+    }
+
+    private fun resolveShapesNeedingSchema(ctx: ProtocolGenerator.GenerationContext): Set<Shape> {
+        val topLevelOutputMembers = getHttpBindingOperations(ctx)
+            .map { ctx.model.expectShape(it.output.get()) }
+            .toSet()
+
+        val topLevelErrorMembers = getHttpBindingOperations(ctx)
+            .flatMap { it.errors }
+            .map { ctx.model.expectShape(it) }
+            .toSet()
+
+        val topLevelServiceErrorMembers = ctx.service.errors
+            .map { ctx.model.expectShape(it) }
+            .toSet()
+
+        // Input members excluded from schema generation until schema-based deserialization is implemented
+
+//        val topLevelInputMembers = getHttpBindingOperations(ctx).flatMap {
+//            val inputShape = ctx.model.expectShape(it.input.get())
+//            inputShape.members()
+//        }
+//            .map { ctx.model.expectShape(it.target) }
+//            .toSet()
+
+        val allTopLevelMembers =
+            topLevelOutputMembers
+                .union(topLevelErrorMembers)
+                .union(topLevelServiceErrorMembers)
+//                .union(topLevelInputMembers)
+
+        return walkNestedShapesRequiringSchema(ctx, allTopLevelMembers)
+    }
+
+    private fun walkNestedShapesRequiringSchema(ctx: ProtocolGenerator.GenerationContext, shapes: Set<Shape>): Set<Shape> {
+        val resolved = mutableSetOf<Shape>()
+        val walker = Walker(ctx.model)
+
+        // walk all the shapes in the set and find all other
+        // structs/unions (or collections thereof) in the graph from that shape
+        shapes.forEach { shape ->
+            walker.iterateShapes(shape) { relationship ->
+                when (relationship.relationshipType) {
+                    RelationshipType.MEMBER_TARGET,
+                    RelationshipType.STRUCTURE_MEMBER,
+                    RelationshipType.LIST_MEMBER,
+                    RelationshipType.SET_MEMBER,
+                    RelationshipType.MAP_KEY,
+                    RelationshipType.MAP_VALUE,
+                    RelationshipType.UNION_MEMBER,
+                    -> true
+                    else -> false
+                }
+            }.forEach {
+                // Don't generate schemas for Smithy built-in / "prelude" shapes.
+                // Those are included in runtime.
+                if (it.id.namespace != "smithy.api") { resolved.add(it) }
             }
         }
         return resolved

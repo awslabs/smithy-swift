@@ -57,7 +57,7 @@ class EndpointParamsGenerator(
                 val memberName = param.name.toString().toLowerCamelCase()
                 val memberSymbol = param.toSymbol()
                 val terminator = if (index != parameters.lastIndex) "," else ""
-                writer.write("$memberName: \$D$terminator", memberSymbol)
+                writer.write("\$L: \$D\$L", memberName, memberSymbol, terminator)
             }
         }
 

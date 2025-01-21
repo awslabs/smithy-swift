@@ -167,7 +167,6 @@ open class HttpProtocolUnitTestResponseGeneratorTests {
 
         let expected = JsonUnionsOutput(
             contents: MyUnion.stringvalue("foo")
-
         )
 
         XCTAssertEqual(actual, expected)

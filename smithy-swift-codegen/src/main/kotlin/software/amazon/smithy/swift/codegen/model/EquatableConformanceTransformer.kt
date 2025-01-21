@@ -35,7 +35,7 @@ object EquatableConformanceTransformer {
         // Get all shapes nested within member shapes used as pagination tokens.
         val shapesToAddEquatableConformanceTraitTo = mutableSetOf<Shape>()
         for (tokenMemberShape in paginationTokenMembers) {
-            val nestedShapes = model.getNestedShapes(tokenMemberShape)
+            val nestedShapes = model.getNestedShapes(tokenMemberShape).filter { it.id.namespace != "smithy.api" }
             shapesToAddEquatableConformanceTraitTo.addAll(nestedShapes)
         }
         // Add @equatableConformance custom trait to all structure and union shapes
