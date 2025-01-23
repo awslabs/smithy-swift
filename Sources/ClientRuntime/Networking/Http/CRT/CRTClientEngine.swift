@@ -206,6 +206,7 @@ public class CRTClientEngine: HTTPClient {
 
             // START - smithy.client.http.connections.acquire_duration
             let acquireConnectionStart = Date().timeIntervalSinceReferenceDate
+            logger.info("TEST LOGGER WORKS BEFORE ACQUIRE CONNECTION")
             let connection = try await connectionMgr.acquireConnection()
             let acquireConnectionEnd = Date().timeIntervalSinceReferenceDate
             telemetry.connectionsAcquireDuration.record(
@@ -398,6 +399,8 @@ public class CRTClientEngine: HTTPClient {
             defer {
                 span.end()
             }
+
+            // Attempt to get or create the connection manager
             let connectionMgr = try await serialExecutor.getOrCreateHTTP2ConnectionPool(endpoint: request.endpoint)
 
             self.logger.debug("Using HTTP/2 connection")
@@ -412,69 +415,83 @@ public class CRTClientEngine: HTTPClient {
                     serverAddress: CRTClientEngine.makeServerAddress(request: request)
                 )
                 Task { [logger] in
-                    let stream: HTTP2Stream
-                    var acquireConnectionEnd: TimeInterval
                     do {
-                        // START - smithy.client.http.connections.acquire_duration
                         let acquireConnectionStart = Date().timeIntervalSinceReferenceDate
-                        stream = try await connectionMgr.acquireStream(requestOptions: requestOptions)
-                        acquireConnectionEnd = Date().timeIntervalSinceReferenceDate
+                        logger.info("TEST LOGGER WORKS BEFORE ACQUIRE STREAM")
+                        // Retry logic for acquiring the stream
+                        let stream = try await retryWithBackoff(maxRetries: 3, initialDelay: 2) {
+                            try await connectionMgr.acquireStream(requestOptions: requestOptions)
+                        }
+                        let acquireConnectionEnd = Date().timeIntervalSinceReferenceDate
+
+                        // Telemetry
                         telemetry.connectionsAcquireDuration.record(
                             value: acquireConnectionEnd - acquireConnectionStart,
                             attributes: Attributes(),
                             context: telemetryContext)
-                        // END - smithy.client.http.connections.acquire_duration
-                        let queuedEnd = acquireConnectionEnd
                         telemetry.requestsQueuedDuration.record(
-                            value: queuedEnd - queuedStart,
+                            value: acquireConnectionEnd - queuedStart,
                             attributes: Attributes(),
                             context: telemetryContext)
-                        // END - smithy.client.http.requests.queued_duration
+
+                        // Handle writing body and other tasks asynchronously
+                        Task {
+                            do {
+                                let connectionUptimeStart = acquireConnectionEnd
+                                defer {
+                                    telemetry.connectionsUptime.record(
+                                        value: Date().timeIntervalSinceReferenceDate - connectionUptimeStart,
+                                        attributes: Attributes(),
+                                        context: telemetryContext)
+                                }
+                                try await stream.write(
+                                    body: request.body,
+                                    telemetry: telemetry,
+                                    serverAddress: CRTClientEngine.makeServerAddress(request: request))
+                            } catch {
+                                logger.error("Error writing stream body: \(error.localizedDescription)")
+                            }
+                        }
                     } catch {
-                        logger.error(error.localizedDescription)
+                        logger.error("Failed to acquire stream: \(error.localizedDescription)")
+                        logger.info("(Logging) ERROR BEING RESUMED in executeHTTP2Request: \(error)")
+                        // Allow the error to propagate to the higher-level retry mechanism
                         wrappedContinuation.safeResume(error: error)
                         return
                     }
-
-                    let connectionsLimit = serialExecutor.maxConnectionsPerEndpoint
-                    let connectionMgrMetrics = connectionMgr.fetchMetrics()
-                    telemetry.updateHTTPMetricsUsage { httpMetricsUsage in
-                        // TICK - smithy.client.http.connections.limit
-                        httpMetricsUsage.connectionsLimit = connectionsLimit
-
-                        // TICK - smithy.client.http.connections.usage
-                        httpMetricsUsage.idleConnections = connectionMgrMetrics.availableConcurrency
-                        httpMetricsUsage.acquiredConnections = connectionMgrMetrics.leasedConcurrency
-
-                        // TICK - smithy.client.http.requests.usage
-                        httpMetricsUsage.inflightRequests = connectionMgrMetrics.leasedConcurrency
-                        httpMetricsUsage.queuedRequests = connectionMgrMetrics.pendingConcurrencyAcquires
-                    }
-
-                    // At this point, continuation is resumed when the initial headers are received
-                    // it is now safe to write the body
-                    // writing is done in a separate task to avoid blocking the continuation
-                    // START - smithy.client.http.connections.uptime
-                    do {
-                        // DURATION - smithy.client.http.connections.uptime
-                        let connectionUptimeStart = acquireConnectionEnd
-                        defer {
-                            telemetry.connectionsUptime.record(
-                                value: Date().timeIntervalSinceReferenceDate - connectionUptimeStart,
-                                attributes: Attributes(),
-                                context: telemetryContext)
-                        }
-                        // TICK - smithy.client.http.bytes_sent
-                        try await stream.write(
-                            body: request.body,
-                            telemetry: telemetry,
-                            serverAddress: CRTClientEngine.makeServerAddress(request: request))
-                    } catch {
-                        logger.error(error.localizedDescription)
-                    }
                 }
             }
+        } catch {
+            // Surface any errors to the caller
+            logger.info("(Logging) ERROR BEING THROWN in executeHTTP2Request: \(error)")
+            throw error
         }
+    }
+
+    // Helper function for retry logic
+    private func retryWithBackoff<T>(
+        maxRetries: Int,
+        initialDelay: TimeInterval,
+        task: @escaping () async throws -> T
+    ) async throws -> T {
+        var attempt = 0
+        var delay = initialDelay
+
+        while attempt < maxRetries {
+            do {
+                return try await task()
+            } catch {
+                if attempt >= maxRetries - 1 {
+                    throw error // Exhaust retries
+                }
+                let logger = SwiftLogger(label: "RetryAcquireStreamLogger")
+                logger.info("RETRYING ACQUIRE STREAM DUE TO \(error)")
+                await Task.sleep(UInt64(delay * 1_000_000_000)) // Delay before retry
+                delay *= 2 // Exponential backoff
+                attempt += 1
+            }
+        }
+        throw NSError(domain: "RetryError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Max retries reached"])
     }
 
     /// Creates a `HTTPRequestOptions` object that can be used to make a HTTP request

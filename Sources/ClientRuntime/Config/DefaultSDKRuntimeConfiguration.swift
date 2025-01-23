@@ -91,7 +91,7 @@ public extension DefaultSDKRuntimeConfiguration {
     static func makeClient(
         httpClientConfiguration: HttpClientConfiguration = defaultHttpClientConfiguration
     ) -> HTTPClient {
-        #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS) || os(macOS)
+        #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
         return URLSessionHTTPClient(httpClientConfiguration: httpClientConfiguration)
         #else
         let connectTimeoutMs = httpClientConfiguration.connectTimeout.map { UInt32($0 * 1000) }
