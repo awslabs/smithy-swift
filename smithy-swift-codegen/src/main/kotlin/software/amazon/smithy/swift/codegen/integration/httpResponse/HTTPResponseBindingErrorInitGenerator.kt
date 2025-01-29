@@ -13,6 +13,8 @@ import software.amazon.smithy.swift.codegen.integration.ProtocolGenerator
 import software.amazon.smithy.swift.codegen.integration.SectionId
 import software.amazon.smithy.swift.codegen.integration.httpResponse.bindingTraits.HTTPResponseTraitPayload
 import software.amazon.smithy.swift.codegen.integration.httpResponse.bindingTraits.HTTPResponseTraitResponseCode
+import software.amazon.smithy.swift.codegen.integration.serde.readwrite.AWSProtocol
+import software.amazon.smithy.swift.codegen.integration.serde.readwrite.awsProtocol
 import software.amazon.smithy.swift.codegen.integration.serde.struct.readerSymbol
 import software.amazon.smithy.swift.codegen.utils.ModelFileUtils
 
@@ -53,6 +55,9 @@ class HTTPResponseBindingErrorInitGenerator(
                     if (needsReader) {
                         writer.addImport(ctx.service.readerSymbol)
                         writer.write("let reader = baseError.errorBodyReader")
+                        if (ctx.service.awsProtocol == AWSProtocol.REST_JSON_1) {
+                            writer.write("reader.respectsJSONName = true")
+                        }
                     }
                     if (needsResponse) {
                         writer.write("let httpResponse = baseError.httpResponse")

@@ -21,12 +21,32 @@ object SmithyTypes {
     val LogAgent = runtimeSymbol("LogAgent", SwiftDeclaration.PROTOCOL)
     val RequestMessageSerializer = runtimeSymbol("RequestMessageSerializer", SwiftDeclaration.PROTOCOL)
     val URIQueryItem = runtimeSymbol("URIQueryItem", SwiftDeclaration.STRUCT)
+    val BigDecimalDocument = runtimeSymbol("BigDecimalDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val BigIntegerDocument = runtimeSymbol("BigIntegerDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val BlobDocument = runtimeSymbol("BlobDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val BooleanDocument = runtimeSymbol("BooleanDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val ByteDocument = runtimeSymbol("ByteDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val DoubleDocument = runtimeSymbol("DoubleDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val FloatDocument = runtimeSymbol("FloatDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val IntegerDocument = runtimeSymbol("IntegerDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val ListDocument = runtimeSymbol("ListDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val LongDocument = runtimeSymbol("LongDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val NullDocument = runtimeSymbol("NullDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val ShortDocument = runtimeSymbol("ShortDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val StringDocument = runtimeSymbol("StringDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val StringMapDocument = runtimeSymbol("StringMapDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
+    val TimestampDocument = runtimeSymbol("TimestampDocument", SwiftDeclaration.STRUCT, listOf(), listOf("SmithyDocumentImpl"))
 }
 
-private fun runtimeSymbol(name: String, declaration: SwiftDeclaration? = null): Symbol = SwiftSymbol.make(
+private fun runtimeSymbol(
+    name: String,
+    declaration: SwiftDeclaration?,
+    additionalImports: List<Symbol> = emptyList(),
+    spiName: List<String> = emptyList(),
+): Symbol = SwiftSymbol.make(
     name,
     declaration,
-    SwiftDependency.SMITHY,
-    emptyList(),
-    emptyList(),
+    SwiftDependency.SMITHY.takeIf { additionalImports.isEmpty() },
+    additionalImports,
+    spiName,
 )

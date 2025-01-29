@@ -6,7 +6,6 @@
 //
 
 @_spi(SmithyReadWrite) import protocol SmithyReadWrite.SmithyReader
-import protocol Smithy.SmithyDocument
 import struct Smithy.Document
 import typealias SmithyReadWrite.ReadingClosure
 import enum SmithyReadWrite.ReaderError
@@ -26,6 +25,9 @@ public final class Reader: SmithyReader {
 
     public let nodeInfo: NodeInfo
     let jsonNode: JSONNode?
+    public var respectsJSONName = false {
+        didSet { children.forEach { $0.respectsJSONName = respectsJSONName } }
+    }
     public internal(set) var children = [Reader]()
     public internal(set) weak var parent: Reader?
     public var hasContent: Bool { jsonNode != nil && jsonNode != .null }
@@ -33,6 +35,7 @@ public final class Reader: SmithyReader {
     init(nodeInfo: NodeInfo, jsonObject: Any?, parent: Reader? = nil) throws {
         self.nodeInfo = nodeInfo
         self.jsonNode = try Self.jsonNode(for: jsonObject)
+        self.respectsJSONName = parent?.respectsJSONName ?? false
         self.parent = parent
         self.children = try Self.children(from: jsonObject, parent: self)
     }
@@ -40,6 +43,7 @@ public final class Reader: SmithyReader {
     init(nodeInfo: NodeInfo, parent: Reader?) {
         self.nodeInfo = nodeInfo
         self.jsonNode = nil
+        self.respectsJSONName = parent?.respectsJSONName ?? false
         self.parent = parent
     }
 

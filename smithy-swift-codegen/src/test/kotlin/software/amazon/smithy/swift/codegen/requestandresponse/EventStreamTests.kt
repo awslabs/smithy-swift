@@ -123,12 +123,12 @@ extension EventStreamTestClientTypes.TestStream {
                     return .messagewithstring(event)
                 case "MessageWithStruct":
                     var event = EventStreamTestClientTypes.MessageWithStruct()
-                    let value = try SmithyJSON.Reader.readFrom(message.payload, with: EventStreamTestClientTypes.TestStruct.read(from:))
+                    let value = try SmithyJSON.Reader.from(data: message.payload).readStructureNonNull(schema: schema__namespace_aws_protocoltests_restjson__name_TestStruct)
                     event.someStruct = value
                     return .messagewithstruct(event)
                 case "MessageWithUnion":
                     var event = EventStreamTestClientTypes.MessageWithUnion()
-                    let value = try SmithyJSON.Reader.readFrom(message.payload, with: EventStreamTestClientTypes.TestUnion.read(from:))
+                    let value = try SmithyJSON.Reader.from(data: message.payload).readStructureNonNull(schema: schema__namespace_aws_protocoltests_restjson__name_TestUnion)
                     event.someUnion = value
                     return .messagewithunion(event)
                 case "MessageWithHeaders":
@@ -166,14 +166,14 @@ extension EventStreamTestClientTypes.TestStream {
                     event.payload = message.payload
                     return .messagewithheaderandpayload(event)
                 case "MessageWithNoHeaderPayloadTraits":
-                    let value = try SmithyJSON.Reader.readFrom(message.payload, with: EventStreamTestClientTypes.MessageWithNoHeaderPayloadTraits.read(from:))
+                    let value = try SmithyJSON.Reader.from(data: message.payload).readStructureNonNull(schema: schema__namespace_aws_protocoltests_restjson__name_MessageWithNoHeaderPayloadTraits)
                     return .messagewithnoheaderpayloadtraits(value)
                 case "MessageWithUnboundPayloadTraits":
                     var event = EventStreamTestClientTypes.MessageWithUnboundPayloadTraits()
                     if case .string(let value) = message.headers.value(name: "header") {
                         event.header = value
                     }
-                    let value = try SmithyJSON.Reader.readFrom(message.payload, with: SmithyReadWrite.ReadingClosures.readString(from:))
+                    let value = try SmithyJSON.Reader.from(data: message.payload).readStringNonNull(schema: SmithyReadWrite.stringSchema)
                     event.unboundString = value
                     return .messagewithunboundpayloadtraits(event)
                 default:
@@ -183,7 +183,7 @@ extension EventStreamTestClientTypes.TestStream {
                 let makeError: (SmithyEventStreamsAPI.Message, SmithyEventStreamsAPI.MessageType.ExceptionParams) throws -> Swift.Error = { message, params in
                     switch params.exceptionType {
                     case "SomeError":
-                        let value = try SmithyJSON.Reader.readFrom(message.payload, with: SomeError.read(from:))
+                        let value = try SmithyJSON.Reader.from(data: message.payload).readStructureNonNull(schema: schema__namespace_aws_protocoltests_restjson__name_SomeError)
                         return value
                     default:
                         let httpResponse = SmithyHTTPAPI.HTTPResponse(body: .data(message.payload), statusCode: .ok)

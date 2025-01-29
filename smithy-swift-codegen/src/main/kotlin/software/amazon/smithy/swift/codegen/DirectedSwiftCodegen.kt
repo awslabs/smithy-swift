@@ -80,6 +80,7 @@ class DirectedSwiftCodegen(val context: PluginContext) :
             generateMessageMarshallable(ctx)
             generateMessageUnmarshallable(ctx)
             generateCodableConformanceForNestedTypes(ctx)
+            generateSchemas(ctx)
 
             initializeMiddleware(ctx)
 

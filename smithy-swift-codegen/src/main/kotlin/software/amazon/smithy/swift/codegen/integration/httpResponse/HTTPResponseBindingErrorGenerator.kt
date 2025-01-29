@@ -13,6 +13,8 @@ import software.amazon.smithy.model.shapes.StructureShape
 import software.amazon.smithy.swift.codegen.SwiftDependency
 import software.amazon.smithy.swift.codegen.integration.HTTPProtocolCustomizable
 import software.amazon.smithy.swift.codegen.integration.ProtocolGenerator
+import software.amazon.smithy.swift.codegen.integration.serde.readwrite.AWSProtocol
+import software.amazon.smithy.swift.codegen.integration.serde.readwrite.awsProtocol
 import software.amazon.smithy.swift.codegen.integration.serde.struct.readerSymbol
 import software.amazon.smithy.swift.codegen.model.getTrait
 import software.amazon.smithy.swift.codegen.model.hasTrait
@@ -90,6 +92,9 @@ class HTTPResponseBindingErrorGenerator(
                     writer.addImport(SwiftSymbol.make("ClientRuntime", null, SwiftDependency.CLIENT_RUNTIME, emptyList(), listOf("SmithyReadWrite")))
                     writer.write("let data = try await httpResponse.data()")
                     writer.write("let responseReader = try \$N.from(data: data)", ctx.service.readerSymbol)
+                    if (ctx.service.awsProtocol == AWSProtocol.REST_JSON_1) {
+                        writer.write("responseReader.respectsJSONName = true")
+                    }
                     val noErrorWrapping = ctx.service.getTrait<RestXmlTrait>()?.isNoErrorWrapping ?: false
                     if (ctx.service.hasTrait<AwsQueryCompatibleTrait>()) {
                         writer.write("let errorDetails = httpResponse.headers.value(for: \"x-amzn-query-error\")")

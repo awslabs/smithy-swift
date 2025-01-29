@@ -28,7 +28,7 @@ public protocol SmithyWriter: AnyObject {
     func write(_ value: Int16?) throws
     func write(_ value: UInt8?) throws
     func write(_ value: Data?) throws
-    func write(_ value: SmithyDocument?) throws
+    func write(_ value: (any SmithyDocument)?) throws
     func writeTimestamp(_ value: Date?, format: TimestampFormat) throws
     func write<T: RawRepresentable>(_ value: T?) throws where T.RawValue == Int
     func write<T: RawRepresentable>(_ value: T?) throws where T.RawValue == String

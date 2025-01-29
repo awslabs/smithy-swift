@@ -88,7 +88,11 @@ class UnionGenerator(
                 writer.writeMemberDocs(model, member)
                 val enumCaseName = symbolProvider.toMemberName(member)
                 val enumCaseAssociatedType = symbolProvider.toSymbol(member)
-                writer.write("case \$L(\$L)", enumCaseName, enumCaseAssociatedType)
+                if (member.target.toString() != "smithy.api#Unit") {
+                    writer.write("case \$L(\$N)", enumCaseName, enumCaseAssociatedType)
+                } else {
+                    writer.write("case \$L", enumCaseName)
+                }
             }
             // add the sdkUnknown case which will always be last
             writer.write("case sdkUnknown(\$N)", SwiftTypes.String)

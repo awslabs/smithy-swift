@@ -83,10 +83,10 @@ extension Nested4 {
     static func read(from reader: SmithyJSON.Reader) throws -> Nested4 {
         guard reader.hasContent else { throw SmithyReadWrite.ReaderError.requiredValueNotPresent }
         var value = Nested4()
-        value.member1 = try reader["member1"].readIfPresent()
-        value.intList = try reader["intList"].readListIfPresent(memberReadingClosure: SmithyReadWrite.ReadingClosures.readInt(from:), memberNodeInfo: "member", isFlattened: false)
-        value.intMap = try reader["intMap"].readMapIfPresent(valueReadingClosure: SmithyReadWrite.ReadingClosures.readInt(from:), keyNodeInfo: "key", valueNodeInfo: "value", isFlattened: false)
-        value.stringMap = try reader["stringMap"].readMapIfPresent(valueReadingClosure: SmithyReadWrite.listReadingClosure(memberReadingClosure: SmithyReadWrite.ReadingClosures.readString(from:), memberNodeInfo: "member", isFlattened: false), keyNodeInfo: "key", valueNodeInfo: "value", isFlattened: false)
+        value.member1 = try reader.readInteger(schema: schema__namespace_com_test__name_Nested4__member_member1)
+        value.intList = try reader.readList(schema: schema__namespace_com_test__name_Nested4__member_intList)
+        value.intMap = try reader.readMap(schema: schema__namespace_com_test__name_Nested4__member_intMap)
+        value.stringMap = try reader.readMap(schema: schema__namespace_com_test__name_Nested4__member_stringMap)
         return value
     }
 }
@@ -184,8 +184,8 @@ extension RecursiveShapesInputOutputNested1 {
     static func read(from reader: SmithyJSON.Reader) throws -> RecursiveShapesInputOutputNested1 {
         guard reader.hasContent else { throw SmithyReadWrite.ReaderError.requiredValueNotPresent }
         var value = RecursiveShapesInputOutputNested1()
-        value.foo = try reader["foo"].readIfPresent()
-        value.nested = try reader["nested"].readIfPresent(with: RecursiveShapesInputOutputNested2.read(from:))
+        value.foo = try reader.readString(schema: schema__namespace_com_test__name_RecursiveShapesInputOutputNested1__member_foo)
+        value.nested = try reader.readStructure(schema: schema__namespace_com_test__name_RecursiveShapesInputOutputNested1__member_nested)
         return value
     }
 }
@@ -213,8 +213,8 @@ extension RecursiveShapesInputOutputNested2 {
     static func read(from reader: SmithyJSON.Reader) throws -> RecursiveShapesInputOutputNested2 {
         guard reader.hasContent else { throw SmithyReadWrite.ReaderError.requiredValueNotPresent }
         var value = RecursiveShapesInputOutputNested2()
-        value.bar = try reader["bar"].readIfPresent()
-        value.recursiveMember = try reader["recursiveMember"].readIfPresent(with: RecursiveShapesInputOutputNested1.read(from:))
+        value.bar = try reader.readString(schema: schema__namespace_com_test__name_RecursiveShapesInputOutputNested2__member_bar)
+        value.recursiveMember = try reader.readStructure(schema: schema__namespace_com_test__name_RecursiveShapesInputOutputNested2__member_recursiveMember)
         return value
     }
 }

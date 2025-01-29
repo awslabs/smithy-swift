@@ -30,10 +30,17 @@ class UnionEncodeGenerator(
                 val membersSortedByName: List<MemberShape> = members.sortedBy { it.memberName }
                 membersSortedByName.forEach { member ->
                     val memberName = ctx.symbolProvider.toMemberName(member)
-                    writer.write("case let .\$L(\$L):", memberName, memberName)
-                    writer.indent()
-                    writeMember(member, true, false)
-                    writer.dedent()
+                    if (member.target.toString() != "smithy.api#Unit") {
+                        writer.write("case let .\$L(\$L):", memberName, memberName)
+                        writer.indent()
+                        writeMember(member, true, false)
+                        writer.dedent()
+                    } else {
+                        writer.write("case .\$L:", memberName)
+                        writer.indent()
+                        writeMember(member, true, false)
+                        writer.dedent()
+                    }
                 }
                 writer.write("case let .sdkUnknown(sdkUnknown):")
                 writer.indent()

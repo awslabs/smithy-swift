@@ -70,9 +70,16 @@ class TestEquatableConformanceIntegration : SwiftIntegration {
                             writer.openBlock("switch (lhs, rhs) {", "}") {
                                 shape.members().forEach { member ->
                                     val enumCaseName = ctx.symbolProvider.toMemberName(member)
-                                    writer.write("case (.\$L(let lhs), .\$L(let rhs)):", enumCaseName, enumCaseName)
-                                    writer.indent {
-                                        writer.write("return lhs == rhs")
+                                    if (member.target.toString() != "smithy.api#Unit") {
+                                        writer.write("case (.\$L(let lhs), .\$L(let rhs)):", enumCaseName, enumCaseName)
+                                        writer.indent {
+                                            writer.write("return lhs == rhs")
+                                        }
+                                    } else {
+                                        writer.write("case (.\$L, .\$L):", enumCaseName, enumCaseName)
+                                        writer.indent {
+                                            writer.write("return true")
+                                        }
                                     }
                                 }
                                 writer.write("default: return false")

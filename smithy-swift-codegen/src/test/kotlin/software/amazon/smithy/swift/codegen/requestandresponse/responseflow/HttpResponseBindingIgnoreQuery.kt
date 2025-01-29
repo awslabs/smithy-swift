@@ -27,8 +27,9 @@ extension IgnoreQueryParamsInResponseOutput {
         let data = try await httpResponse.data()
         let responseReader = try SmithyJSON.Reader.from(data: data)
         let reader = responseReader
+        reader.respectsJSONName = true
         var value = IgnoreQueryParamsInResponseOutput()
-        value.baz = try reader["baz"].readIfPresent()
+        value.baz = try reader.readString(schema: schema__namespace_smithy_swift_synthetic__name_IgnoreQueryParamsInResponseOutput__member_baz)
         return value
     }
 }

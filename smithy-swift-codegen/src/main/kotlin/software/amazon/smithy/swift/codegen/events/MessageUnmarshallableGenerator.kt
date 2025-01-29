@@ -11,6 +11,10 @@ import software.amazon.smithy.swift.codegen.SwiftWriter
 import software.amazon.smithy.swift.codegen.integration.HTTPProtocolCustomizable
 import software.amazon.smithy.swift.codegen.integration.ProtocolGenerator
 import software.amazon.smithy.swift.codegen.integration.serde.readwrite.ReadingClosureUtils
+import software.amazon.smithy.swift.codegen.integration.serde.readwrite.WireProtocol
+import software.amazon.smithy.swift.codegen.integration.serde.readwrite.responseWireProtocol
+import software.amazon.smithy.swift.codegen.integration.serde.schema.readMethodName
+import software.amazon.smithy.swift.codegen.integration.serde.schema.schemaVar
 import software.amazon.smithy.swift.codegen.integration.serde.struct.readerSymbol
 import software.amazon.smithy.swift.codegen.model.eventStreamErrors
 import software.amazon.smithy.swift.codegen.model.eventStreamEvents
@@ -204,7 +208,25 @@ class MessageUnmarshallableGenerator(
         }
     }
 
-    private fun renderReadToValue(writer: SwiftWriter, memberShape: MemberShape) {
+    private fun renderReadToValue(writer: SwiftWriter, member: MemberShape) {
+        if (ctx.service.responseWireProtocol == WireProtocol.JSON) {
+            renderReadWithSchemaToValue(writer, member)
+        } else {
+            renderReadWithSerdeToValue(writer, member)
+        }
+    }
+
+    private fun renderReadWithSchemaToValue(writer: SwiftWriter, memberShape: MemberShape) {
+        val target = ctx.model.expectShape(memberShape.target)
+        writer.write(
+            "let value = try \$N.from(data: message.payload).\$LNonNull(schema: \$L)",
+            ctx.service.readerSymbol,
+            target.readMethodName,
+            target.schemaVar(writer),
+        )
+    }
+
+    private fun renderReadWithSerdeToValue(writer: SwiftWriter, memberShape: MemberShape) {
         val readingClosure = ReadingClosureUtils(ctx, writer).readingClosure(memberShape)
         writer.write(
             "let value = try \$N.readFrom(message.payload, with: \$L)",
