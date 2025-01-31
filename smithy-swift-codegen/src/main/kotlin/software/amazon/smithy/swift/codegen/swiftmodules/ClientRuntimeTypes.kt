@@ -95,6 +95,11 @@ object ClientRuntimeTypes {
         val InterceptorProviders = runtimeSymbol("[ClientRuntime.InterceptorProvider]", null, listOf(InterceptorProvider))
         val HttpInterceptorProviders = runtimeSymbol("[ClientRuntime.HttpInterceptorProvider]", null, listOf(HttpInterceptorProvider))
     }
+
+    object RpcV2Cbor {
+        val RpcV2CborError = runtimeSymbol("RpcV2CborError", SwiftDeclaration.STRUCT, emptyList(), listOf("SmithyReadWrite"))
+        val CborValidateResponseHeaderMiddleware = runtimeSymbol("CborValidateResponseHeaderMiddleware", SwiftDeclaration.STRUCT)
+    }
 }
 
 private fun runtimeSymbol(
